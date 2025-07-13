@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Sekitar Kost Diana</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f6f8fa;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 300px;
+            background: #fff;
+            border-right: 1px solid #e0e0e0;
+            padding: 18px 12px 12px 12px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar h2 {
+            font-size: 1.2rem;
+            color: #1976d2;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .filter-group {
+            margin-bottom: 12px;
+        }
+        .filter-group select {
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: 6px;
+            border: 1px solid #bdbdbd;
+            font-size: 1rem;
+        }
+        .locations-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .location-item {
+            display: flex;
+            align-items: center;
+            background: #f8faff;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 4px rgba(25, 118, 210, 0.04);
+            transition: box-shadow 0.2s;
+        }
+        .location-item:hover {
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.10);
+        }
+        .location-icon {
+            font-size: 1.3rem;
+            margin-right: 10px;
+            color: #1976d2;
+        }
+        .location-info {
+            flex: 1;
+        }
+        .location-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #222;
+        }
+        .location-desc {
+            font-size: 0.92rem;
+            color: #666;
+        }
+        .location-coord {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #e53935;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: color 0.2s;
+        }
+        .delete-btn:hover {
+            color: #b71c1c;
+        }
+        .map-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .fab {
+            position: absolute;
+            right: 28px;
+            bottom: 32px;
+            background: linear-gradient(135deg, #1976d2 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 1.7rem;
+            box-shadow: 0 4px 16px rgba(25, 118, 210, 0.18);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: background 0.2s;
+        }
+        .fab:hover {
+            background: linear-gradient(135deg, #1565c0 0%, #5e35b1 100%);
+        }
+        /* Modal */
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.25);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        #modal-form {
+            background: #fff;
+            padding: 24px 20px 18px 20px;
+            border-radius: 10px;
+            min-width: 270px;
+            box-shadow: 0 4px 24px rgba(25, 118, 210, 0.18);
+        }
+        #modal-form h3 {
+            margin-top: 0;
+            color: #1976d2;
+            font-size: 1.2rem;
+            margin-bottom: 14px;
+        }
+        #point-form label {
+            font-weight: 500;
+            color: #333;
+            font-size: 0.98rem;
+        }
+        #point-form input, #point-form select {
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 7px 10px;
+            border: 1px solid #bdbdbd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        #point-form button[type="submit"] {
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 18px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        #point-form button[type="submit"]:hover {
+            background: #1565c0;
+        }
+        #cancel-btn {
+            background: #e0e0e0;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 18px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        #cancel-btn:hover {
+            background: #bdbdbd;
+        }
+        footer {
+            width: 100%;
+            background: #1976d2;
+            color: #fff;
+            text-align: center;
+            padding: 12px 0 10px 0;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+        }
+        @media (max-width: 800px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; height: 220px; border-right: none; border-bottom: 1px solid #e0e0e0; }
+            .map-wrapper { height: calc(100vh - 220px); }
+            #map { height: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Peta Sekitar Kost Diana</h2>
+            <div class="filter-group">
+                <select id="filter-category">
+                    <option value="all">Semua Kategori</option>
+                    <option value="kost">Kost</option>
+                    <option value="rumah">Rumah</option>
+                    <option value="villa">Villa</option>
+                    <option value="kampus">Kampus</option>
+                    <option value="fasilitas">Fasilitas</option>
+                    <option value="makan">Makan</option>
+                </select>
+            </div>
+            <div class="locations-list" id="locations-list">
+                <!-- Daftar lokasi akan diisi JS -->
+            </div>
+        </div>
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <button class="fab" id="add-point-btn" title="Tambah Titik"><i class="fas fa-plus"></i></button>
+        </div>
+    </div>
+    <!-- Modal Tambah Titik -->
+    <div id="modal-overlay">
+        <div id="modal-form">
+            <h3>Tambah Lokasi</h3>
+            <form id="point-form">
+                <label for="point-name">Nama Lokasi:</label>
+                <input type="text" id="point-name" name="point-name" required>
+                <label for="point-category">Kategori:</label>
+                <select id="point-category" name="point-category" required>
+                    <option value="kost">Kost</option>
+                    <option value="rumah">Rumah</option>
+                    <option value="villa">Villa</option>
+                    <option value="kampus">Kampus</option>
+                    <option value="fasilitas">Fasilitas</option>
+                    <option value="makan">Makan</option>
+                </select>
+                <label for="point-desc">Deskripsi (opsional):</label>
+                <input type="text" id="point-desc" name="point-desc">
+                <input type="hidden" id="point-lat">
+                <input type="hidden" id="point-lng">
+                <button type="submit">Simpan</button>
+                <button type="button" id="cancel-btn">Batal</button>
+            </form>
+        </div>
+    </div>
+    <footer>
+        © 2024 Kost Zeltia Gustadri
+    </footer>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Data lokasi default
+        const defaultLocations = [
+            { name: 'Rumah Saya', category: 'rumah', desc: 'Rumah warga sekitar', lat: 0.448843, lng: 101.397057 },
+            { name: 'Kost Zeltia Gustadri', category: 'kost', desc: 'Tempat tinggal mahasiswa', lat: 0.448815, lng: 101.397187 },
+            { name: 'Rumah Pak Ujang', category: 'rumah', desc: 'Rumah warga sekitar', lat: 0.448801, lng: 101.397261 },
+            { name: 'Kantin Kak Silas', category: 'makan', desc: 'Tempat makan mahasiswa', lat: 0.448754, lng: 101.397423 }
+        ];
+        let customLocations = JSON.parse(localStorage.getItem('customLocations') || '[]');
+        let allLocations = [...defaultLocations, ...customLocations];
+        let markers = [];
+        let map = L.map('map').setView([0.448815, 101.397187], 17);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        // Ikon kategori
+        function getIcon(category) {
+            const icons = {
+                kost: 'fa-house-chimney', rumah: 'fa-home', villa: 'fa-hotel', kampus: 'fa-school', fasilitas: 'fa-building', makan: 'fa-utensils'
+            };
+            return icons[category] || 'fa-map-marker-alt';
+        }
+        // Render marker dan list
+        function renderLocations(filter = 'all') {
+            // Hapus marker lama
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            // Filter lokasi
+            let filtered = allLocations.filter(l => filter === 'all' || l.category === filter);
+            // Render marker
+            filtered.forEach((loc, idx) => {
+                let marker = L.marker([loc.lat, loc.lng]).addTo(map);
+                marker.bindPopup(`<b><i class='fas ${getIcon(loc.category)}'></i> ${loc.name}</b><br>${loc.desc || ''}<br><span style='font-size:11px;color:#888;'>Koordinat: ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}</span>`);
+                markers.push(marker);
+            });
+            // Render list
+            const list = document.getElementById('locations-list');
+            list.innerHTML = '';
+            filtered.forEach((loc, idx) => {
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.innerHTML = `
+                    <span class="location-icon"><i class="fas ${getIcon(loc.category)}"></i></span>
+                    <div class="location-info">
+                        <div class="location-title">${loc.name}</div>
+                        <div class="location-desc">${loc.desc || ''}</div>
+                        <div class="location-coord">${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}</div>
+                    </div>
+                    ${idx >= defaultLocations.length ? `<button class="delete-btn" title="Hapus" data-idx="${idx}"><i class="fas fa-trash"></i></button>` : ''}
+                `;
+                // Klik ke marker
+                item.onclick = function(e) {
+                    if (e.target.closest('.delete-btn')) return;
+                    map.setView([loc.lat, loc.lng], 18);
+                    markers[idx].openPopup();
+                };
+                // Hapus custom
+                if (idx >= defaultLocations.length) {
+                    item.querySelector('.delete-btn').onclick = function(ev) {
+                        ev.stopPropagation();
+                        if (confirm('Hapus lokasi ini?')) {
+                            customLocations.splice(idx - defaultLocations.length, 1);
+                            localStorage.setItem('customLocations', JSON.stringify(customLocations));
+                            allLocations = [...defaultLocations, ...customLocations];
+                            renderLocations(document.getElementById('filter-category').value);
+                        }
+                    };
+                }
+                list.appendChild(item);
+            });
+        }
+        // Filter kategori
+        document.getElementById('filter-category').onchange = function() {
+            renderLocations(this.value);
+        };
+        // Tambah titik
+        let addMode = false;
+        document.getElementById('add-point-btn').onclick = function() {
+            addMode = true;
+            this.style.background = '#5e35b1';
+            this.innerHTML = '<i class="fas fa-location-crosshairs"></i>';
+        };
+        map.on('click', function(e) {
+            if (!addMode) return;
+            showModal(e.latlng.lat, e.latlng.lng);
+        });
+        // Modal logic
+        function showModal(lat, lng) {
+            document.getElementById('point-name').value = '';
+            document.getElementById('point-category').value = 'kost';
+            document.getElementById('point-desc').value = '';
+            document.getElementById('point-lat').value = lat;
+            document.getElementById('point-lng').value = lng;
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.getElementById('point-name').focus();
+        }
+        function hideModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            addMode = false;
+            document.getElementById('add-point-btn').style.background = '';
+            document.getElementById('add-point-btn').innerHTML = '<i class="fas fa-plus"></i>';
+        }
+        document.getElementById('cancel-btn').onclick = hideModal;
+        document.getElementById('point-form').onsubmit = function(e) {
+            e.preventDefault();
+            const name = document.getElementById('point-name').value.trim();
+            const category = document.getElementById('point-category').value;
+            const desc = document.getElementById('point-desc').value.trim();
+            const lat = parseFloat(document.getElementById('point-lat').value);
+            const lng = parseFloat(document.getElementById('point-lng').value);
+            if (name && category && !isNaN(lat) && !isNaN(lng)) {
+                customLocations.push({ name, category, desc, lat, lng });
+                localStorage.setItem('customLocations', JSON.stringify(customLocations));
+                allLocations = [...defaultLocations, ...customLocations];
+                renderLocations(document.getElementById('filter-category').value);
+            }
+            hideModal();
+        };
+        // Inisialisasi
+        renderLocations();
+    </script>
+</body>
+</html> 
