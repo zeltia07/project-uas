@@ -221,6 +221,7 @@
         <div class="map-wrapper">
             <div id="map"></div>
             <button class="fab" id="add-point-btn" title="Tambah Titik"><i class="fas fa-plus"></i></button>
+            <button class="fab" id="add-polygon-btn" title="Tambah Poligon" style="right: 100px;"><i class="fas fa-draw-polygon"></i></button>
         </div>
     </div>
     <!-- Modal Tambah Titik -->
@@ -248,10 +249,35 @@
             </form>
         </div>
     </div>
+    <!-- Modal Tambah Poligon -->
+    <div id="modal-polygon-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.25); z-index:2000; justify-content:center; align-items:center;">
+      <div id="modal-polygon-form" style="background:#fff; padding:24px 20px 18px 20px; border-radius:10px; min-width:270px; box-shadow:0 4px 24px rgba(25, 118, 210, 0.18);">
+        <h3>Tambah Bangunan/Poligon</h3>
+        <form id="polygon-form">
+          <label>Nama Bangunan:</label>
+          <input type="text" id="polygon-name" required>
+          <label>Kategori:</label>
+          <select id="polygon-category">
+            <option value="kost">Kost</option>
+            <option value="rumah">Rumah</option>
+            <option value="villa">Villa</option>
+            <option value="kampus">Kampus</option>
+            <option value="fasilitas">Fasilitas</option>
+          </select>
+          <label>Deskripsi:</label>
+          <input type="text" id="polygon-desc">
+          <label>Warna:</label>
+          <input type="color" id="polygon-color" value="#1976d2">
+          <button type="submit">Simpan</button>
+          <button type="button" id="cancel-polygon-btn">Batal</button>
+        </form>
+      </div>
+    </div>
     <footer>
         © 2024 Kost Zeltia Gustadri
     </footer>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
     <script>
         // Data lokasi default
         const defaultLocations = [
@@ -263,7 +289,7 @@
         let customLocations = JSON.parse(localStorage.getItem('customLocations') || '[]');
         let allLocations = [...defaultLocations, ...customLocations];
         let markers = [];
-        let map = L.map('map').setView([0.448815, 101.397187], 17);
+        let map = L.map('map').setView([0.449, 101.397], 19);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
@@ -372,6 +398,204 @@
         };
         // Inisialisasi
         renderLocations();
+
+        // Data poligon default (dari user)
+        const defaultBangunan = [
+          {
+            nama: 'Kampus USTI',
+            deskripsi: 'Universitas Sains dan Teknologi Indonesia',
+            kategori: 'kampus',
+            warna: '#1976d2',
+            coords: [
+              [0.45020,101.39795],
+              [0.45007,101.39865],
+              [0.44896,101.39836],
+              [0.44887,101.39861],
+              [0.44835,101.39857],
+              [0.44837,101.39848],
+              [0.44777,101.39824],
+              [0.44828,101.39707],
+              [0.44867,101.39731],
+              [0.44867,101.39740]
+            ]
+          },
+          {
+            nama: 'Kost Perempuan',
+            deskripsi: 'Kost khusus mahasiswi',
+            kategori: 'kost',
+            warna: '#e91e63',
+            coords: [
+              [0.44888590158264075,101.39695957292902],
+              [0.4488604155416509,101.39702394594072],
+              [0.448797371124116,101.39699980606134],
+              [0.448829564018243,101.39693543304963]
+            ]
+          },
+          {
+            nama: 'Rumah Saya',
+            deskripsi: 'Rumah warga sekitar',
+            kategori: 'rumah',
+            warna: '#fb8c00',
+            coords: [
+              [0.4488656968439466,101.39703065150607],
+              [0.448846917655814,101.39709234230898],
+              [0.44879326283231996,101.39707356684723],
+              [0.4488187488735261,101.39701589935757]
+            ]
+          },
+          {
+            nama: 'Kost Zeltia Gustadri',
+            deskripsi: 'Tempat tinggal mahasiswa',
+            kategori: 'kost',
+            warna: '#43a047',
+            coords: [
+              [0.44884423491464315,101.39711379997958],
+              [0.448794604202899,101.39709636562222],
+              [0.44875972856741037,101.3972023128707],
+              [0.44881338339117155,101.39722645275009]
+            ]
+          },
+          {
+            nama: 'Rumah Pak Ujang',
+            deskripsi: 'Rumah warga sekitar',
+            kategori: 'rumah',
+            warna: '#ff9800',
+            coords: [
+              [0.44881338339117155,101.39722108833246],
+              [0.44879996968526625,101.39726802698682],
+              [0.44875033897321687,101.39724254600303],
+              [0.4487691181616166,101.39720499507952]
+            ]
+          },
+          {
+            nama: 'Kantin Kak Silas',
+            deskripsi: 'Tempat makan mahasiswa',
+            kategori: 'fasilitas',
+            warna: '#e53935',
+            coords: [
+              [0.44877850775577194,101.39734715214708],
+              [0.4487315597847916,101.39733239999858],
+              [0.44870875648448927,101.3973981141147],
+              [0.4487570458262268,101.39739945521912]
+            ]
+          },
+        ];
+        // Gabungkan poligon default dan custom
+        let polygons = JSON.parse(localStorage.getItem('customPolygons') || '[]');
+        polygons = [...defaultBangunan, ...polygons];
+        let polygonLayer = new L.FeatureGroup().addTo(map);
+        // Render poligon dari data
+        function renderPolygons() {
+            polygonLayer.clearLayers();
+            polygons.forEach((b, idx) => {
+                let poly = L.polygon(b.coords, { color: b.warna }).addTo(polygonLayer);
+                poly.bindPopup(`<b>${b.nama}</b><br>${b.deskripsi}`);
+                poly._bangunanIdx = idx; // simpan index untuk edit/hapus
+            });
+        }
+        renderPolygons();
+        // Tambah control edit/hapus (digitasi)
+        let polygonDrawControl;
+        let digitasiAktif = false;
+        function enableDrawPolygonOnly() {
+            if (digitasiAktif) {
+                // Matikan digitasi
+                if (polygonDrawControl) map.removeControl(polygonDrawControl);
+                polygonDrawControl = null;
+                digitasiAktif = false;
+                document.getElementById('add-polygon-btn').style.background = '';
+                document.getElementById('add-polygon-btn').innerHTML = '<i class="fas fa-draw-polygon"></i>';
+                return;
+            }
+            if (polygonDrawControl) map.removeControl(polygonDrawControl);
+            polygonDrawControl = new L.Control.Draw({
+                draw: {
+                    polygon: true,
+                    marker: false,
+                    polyline: false,
+                    rectangle: false,
+                    circle: false,
+                    circlemarker: false
+                },
+                edit: false
+            });
+            map.addControl(polygonDrawControl);
+            digitasiAktif = true;
+            document.getElementById('add-polygon-btn').style.background = '#5e35b1';
+            document.getElementById('add-polygon-btn').innerHTML = '<i class="fas fa-pen-to-square"></i>';
+        }
+        document.getElementById('add-polygon-btn').onclick = enableDrawPolygonOnly;
+        // Event gambar poligon baru
+        map.on(L.Draw.Event.CREATED, function (e) {
+            if (e.layerType === 'polygon') {
+                let coords = e.layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+                showPolygonModal(coords, e.layer);
+            }
+        });
+        // Event edit poligon
+        map.on('draw:edited', function(e) {
+            e.layers.eachLayer(function(layer) {
+                let idx = layer._bangunanIdx;
+                if (typeof idx === 'number' && idx >= defaultBangunan.length) {
+                    // Hanya update poligon custom
+                    polygons[idx].coords = layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+                }
+            });
+            // Simpan hanya poligon custom
+            localStorage.setItem('customPolygons', JSON.stringify(polygons.slice(defaultBangunan.length)));
+            renderPolygons();
+        });
+        // Event hapus poligon
+        map.on('draw:deleted', function(e) {
+            let toDelete = [];
+            e.layers.eachLayer(function(layer) {
+                let idx = layer._bangunanIdx;
+                if (typeof idx === 'number' && idx >= defaultBangunan.length) {
+                    toDelete.push(idx);
+                }
+            });
+            // Hapus dari array custom
+            polygons = polygons.filter((_, idx) => !toDelete.includes(idx));
+            localStorage.setItem('customPolygons', JSON.stringify(polygons.slice(defaultBangunan.length)));
+            renderPolygons();
+        });
+        // Modal tambah poligon
+        function showPolygonModal(coords, layer) {
+            document.getElementById('modal-polygon-overlay').style.display = 'flex';
+            document.getElementById('polygon-form').onsubmit = function(ev) {
+                ev.preventDefault();
+                let nama = document.getElementById('polygon-name').value;
+                let kategori = document.getElementById('polygon-category').value;
+                let deskripsi = document.getElementById('polygon-desc').value;
+                let warna = document.getElementById('polygon-color').value;
+                let newBangunan = { nama, deskripsi, kategori, warna, coords };
+                polygons.push(newBangunan);
+                localStorage.setItem('customPolygons', JSON.stringify(polygons.slice(defaultBangunan.length)));
+                layer.setStyle({ color: warna });
+                layer.bindPopup(`<b>${nama}</b><br>${deskripsi}`);
+                polygonLayer.addLayer(layer);
+                hidePolygonModal();
+                // Matikan mode digitasi setelah simpan
+                if (polygonDrawControl) {
+                    map.removeControl(polygonDrawControl);
+                    polygonDrawControl = null;
+                    digitasiAktif = false;
+                    document.getElementById('add-polygon-btn').style.background = '';
+                    document.getElementById('add-polygon-btn').innerHTML = '<i class="fas fa-draw-polygon"></i>';
+                }
+            };
+            document.getElementById('cancel-polygon-btn').onclick = hidePolygonModal;
+            function hidePolygonModal() {
+                document.getElementById('modal-polygon-overlay').style.display = 'none';
+                if (polygonDrawControl) {
+                    map.removeControl(polygonDrawControl);
+                    polygonDrawControl = null;
+                    digitasiAktif = false;
+                    document.getElementById('add-polygon-btn').style.background = '';
+                    document.getElementById('add-polygon-btn').innerHTML = '<i class="fas fa-draw-polygon"></i>';
+                }
+            }
+        }
     </script>
 </body>
 </html> 
